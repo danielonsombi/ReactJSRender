@@ -170,7 +170,7 @@ The child does not re-render when the same state is submitted after re-renders b
 Everytime the state of the parent component changes, the child component is rerendered but the commit phase of the child is not reached (DOM represented by child component is never updated - Child went through the render phase but not the commit phase). This is called "Unnecessary render".
 Unnecessary renders affect perfomance and need to be optimized.
 
-Unnecessary Renders: (As at this stage it was not working as explained)
+Unnecessary Renders:
 When a parent component renders, React will recursively render all of its child components. This is how React knows whether it needs to actually make any changes to the DOM.
 Unnecessary renders - Where the child component goes through the render phase but not the commit phase.
 
@@ -191,6 +191,24 @@ export const ParentOne = () => {
 }
 
 On clicking the button, both the parent and child component re-renders. However, only the parent components goes to the commit phase. To optimize the above code, instad of calling the child component in the parent component, this is achieved by passing childOne as children to the ParentOne component in the App.js component. In ParentOne, destructure Children from props and add them to the JSX. This way, it will only be re-rendered if its value changes. 
+
+Reformated as:
+import React, {useState}  from 'react'
+
+export const ParentOne = ( { children } ) => {
+    const [count, setCount] = useState(0);
+
+    console.log('ParentOne Render')
+    return (
+        <div>
+            <button onClick={() => setCount(c => c + 1)}>Count - {count}</button>
+            {children}
+        </div>
+    )
+}
+
+
+The above only rerenders the children if the content changes. Note that children should be all small letters.
 
 Same Element reference:
 Component can change its state but not props.
@@ -221,4 +239,77 @@ Why doesn't react just internally memoize every component and not expose React.m
 2. If a normal component renders in 10ms and React.Memo takes 2ms then if no props changes then the component takes 2ms. If the component takes new props it takes 12 ms. By wrapping everything with React.Memo, can be detrimental to your applcation. Better optimize only the expensive components.
 3. When you optimize the rendering of one component, react will also skip rendering that component's entire subtree because it's effectively stopping the default "render children recursively" behaviour of React.
 
+
+Incorrect ways of using React.Memo
+1. Incorrect Memo with Children - No need to memoize a child component that has children.
+Children components are not always plain text but more often Html elements or custom components.
+e.g:
+
+import React, {useState}  from 'react'
+import { MemoizedChildThree } from './ChildThree';
+//import { ChildThree } from './ChildThree';
+
+
+export const ParentThree = ( ) => {
+    const [count, setCount] = useState(0);
+
+    const [name, setName] = useState('Daniel')
+
+    console.log('ParentThree Render')
+    return (
+        <div>
+            <button onClick={() => setCount(c => c + 1)}>Count - {count}</button>
+            <button onClick={() => setName('Onsombi')}>Change Name</button>
+            {/* <ChildThree name = {name}/> */}
+            <MemoizedChildThree name = {name}>
+                <strong>Hello</strong>
+            </MemoizedChildThree>
+        </div>
+    )
+}
+
+When the child component is set to html code, opposed to plain text, the child component is still re-rendered when the count button is clicked in spite of the component being memoized. There is therefore no need to wrap a child component with the React.Memo if the child component itselt has children. The Memoization will have no effect, for the reference to the children props will always make the component to re-render.
+
+
+2. Incorrect Memo with Impure Component:
+Say we have another ChildFour component which shows the name and the current time. And we also want it to be optimized and therefore have it wrapped within React.Memo. Consider:
+
+import React, {useState}  from 'react'
+import { MemoizedChildThree } from './ChildThree';
+import { MemoizedChildFour } from './ChildFour';
+//import { ChildThree } from './ChildThree';
+
+
+export const ParentThree = ( ) => {
+    const [count, setCount] = useState(0);
+
+    const [name, setName] = useState('Daniel')
+
+    console.log('ParentThree Render')
+    return (
+        <div>
+            <button onClick={() => setCount(c => c + 1)}>Count - {count}</button>
+            <button onClick={() => setName('Onsombi')}>Change Name</button>
+            {/* <ChildThree name = {name}/> */}
+            {/* <MemoizedChildThree name = {name}>
+                <strong>Hello</strong>
+            </MemoizedChildThree> */}
+            <MemoizedChildFour name = {name}/>
+        </div>
+    )
+}
+
+The memoized child component in this case will re-render because the name prop changed.
+If the count button is clicked, only the parent component will re-render. The child component did not re-render becuase its props did not change.
+This is incorrect because the expectation would be that every rerender should also change the time on the child component.
+
+So when dealing with impure components (where the JSX might change even though the props and state remain the same) be aware of the consequences of memoization e.g when using date and math.random might not need the React.memo.
+
+3. Incorrect memo with props Reference
+   If an object were to be passed as a prop to the child component, memoizing that component might not be necessary. The child component will still rerender in spite wrapping it around the React.memo. Every time the parent component renders aperson object is recreated resulting to the re-rendering of the child component. The behaviour is the same if a function was passed down to the child component.
+
+   This is because the parent component creates a new reference of the function handleClick or the object person and then passess the new reference as props to the child component and it won't therefore optimize.
+   This makes it an incorrect usage of memoization.
+
+   Something needs to be done to ensure that even when we have objects and functions, memoization works:
 
