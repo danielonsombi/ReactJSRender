@@ -311,5 +311,85 @@ So when dealing with impure components (where the JSX might change even though t
    This is because the parent component creates a new reference of the function handleClick or the object person and then passess the new reference as props to the child component and it won't therefore optimize.
    This makes it an incorrect usage of memoization.
 
-   Something needs to be done to ensure that even when we have objects and functions, memoization works:
+Something needs to be done to ensure that even when we have objects and functions, memoization works:
+This can be resolved using the useMemo and useCallback hooks.
+The two hooks can resolve the optimization problem by:
+1. Create the memoizePerson using the useMemo component. The component below will be transformed as the later:
+import React, {useState}  from 'react'
+import { MemoizedChildFive } from './ChildFive';
+
+
+export const ParentFour = ( ) => {
+    const [count, setCount] = useState(0);
+
+    const [name, setName] = useState('Daniel')
+
+    const person = {
+        fname: 'Bruce',
+        lname: 'Wayne'
+    }
+
+    const handleClick = () => {}
+
+    console.log('ParentFour Render')
+    return (
+        <div>
+            <button onClick={() => setCount(c => c + 1)}>Count - {count}</button>
+            <button onClick={() => setName('Onsombi')}>Change Name</button>
+            <MemoizedChildFive name = {name} /*person = {person}*/ handleClick = {handleClick}/>
+        </div>
+    )
+}
+
+
+Will be transformed to:
+
+import React, {useState, useMemo}  from 'react'
+import { MemoizedChildFive } from './ChildFive';
+
+
+export const ParentFour = ( ) => {
+    const [count, setCount] = useState(0);
+
+    const [name, setName] = useState('Daniel')
+
+    const person = {
+        fname: 'Bruce',
+        lname: 'Wayne'
+    }
+
+
+    //For better optimization, use the UseMemo hook as below. And since we have no dependencies, then pass an empty array as below:
+    const memoizedPerson = useMemo(() => person, [])
+
+    const handleClick = () => {}
+
+    console.log('ParentFour Render')
+    return (
+        <div>
+            <button onClick={() => setCount(c => c + 1)}>Count - {count}</button>
+            <button onClick={() => setName('Onsombi')}>Change Name</button>
+            <MemoizedChildFive name = {name} person = {memoizedPerson}/>
+        </div>
+    )
+}
+
+This sorts the optimization issue when working with objects and arrays as props to a child component.
+
+To fix use of function references, we use the useCallback hook - The memoizedHandle click is then passed as a prop and with this the child component will only be re-rendered when there is a change in its props.
+
+
+Context:
+Ways to cause a re-render
+1. If it calls useState setter function or useReducer dispatch function.
+2. If the parent component re-renders
+3. Also if the API React context is called
+
+Ifa component has App -> Parent -> Child A -> Child B -> Child C, with the context api we will use the count context provider with the count state at the parent which can then be passed down the tree to the child components and used using the useContext hook.
+
+If initial render is done, then if the count value is changed on the parent, the parent component will be flagged for rerendering. It also create the context provider and checks if the provider has a new value. React checks any other component that consumes the provided context value. The component will also be flagged for re-rendering.
+
+
+
+
 
