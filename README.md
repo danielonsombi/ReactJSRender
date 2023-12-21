@@ -68,3 +68,37 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+How RTe-render works: Scenario:
+Divided into the Render phase and Commit Phase
+
+Render Phase:
+1. Find all elements flagged for update.
+2. For each flagged component, convert JSX to React element using the createElement() method and store the result
+3. Perform reconcilliation - Diff old and new tree od the react elelements (a.k.a Virtual DOM).
+4. Handover to changes to the next phase
+
+Commit Phase 
+1. Apply changes to the DOM.
+
+
+React by default logs one log statement twice. This is because of the strict mode encouraged by react. In the index.js, the <App /> is wrapped within the <React.StrictMode> which intentionally double invokes the functional component only in developer mode, but logs one in production mode. The solution is to comment the restrict mode out.
+
+UseState:
+Render Phase - React will go thorugh the component tree and flag the changed components and finds only use state needs an update. React then uses the createElement() method to convert the JSX to a React Element. It will then diff the element created from the previous render to the new render, identify the changes and handover to the commit phase then have them applied to the DOM.
+1. After the intial render - if you call a set of functions and set the state to the same value the component will not re-render
+2. After the component has been rerendered, if you set the state to the same value the component will rerender but only one more time.
+
+React flags the components that have been changed. React requires that useState updates must pass in or return a new reference as the state value. If the state is a primitive type, it has to be a new string, number or boolean. If not the case React will bail out. The bailing out can be a result of two cases:
+1. If the initial render is completed and the value passed in is the same as before it bails out.
+2. If the component has been re-rendered already, it will proceed and renders once then bails out without going to the commit since the value is the same.
+
+Summary on UseState:
+The setter function from a useState hook will cause the component to re-render.
+The exception is when you update a state Hook to the same value as the current state.
+Same value after the initial render? The component will not rerender.
+Same value after re-renders? React will render that specific component one more time and then bail out from any subsequenct renders.
+
+UseReducer:
+Behaves similar to the UseState hook with regards flagging and the render and commit phases.
+If you reload the page, the component does its intial render. If you click on the reset button which passes the same intial value, However, in the recent versions of react the bail out has been removed.
