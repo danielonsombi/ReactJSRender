@@ -102,3 +102,123 @@ Same value after re-renders? React will render that specific component one more 
 UseReducer:
 Behaves similar to the UseState hook with regards flagging and the render and commit phases.
 If you reload the page, the component does its intial render. If you click on the reset button which passes the same intial value, However, in the recent versions of react the bail out has been removed.
+
+
+State Immutability:
+React does not rerender a component when the new state is the same as the old state. However, the earlier examples were for primitive types. How does this work with objects and arrays, is the question to answer.
+We'll deal with state as an object. To achieve this we declare a state variable with two properties. Consider:
+
+import React, {useState} from 'react'
+
+const initialState = {
+    fname: 'Bruce',
+    lname: 'Wayne'
+}
+
+
+const ObjectUseState = () => {
+    const [person, setPerson] = useState(initialState)
+
+    const changeName = () => {
+        person.fname = 'Daniel'
+        person.lname = 'Onsombi'
+        setPerson(person)
+    }
+
+    console.log('ObjectUseState Render')
+    
+    return (
+        <div>
+            <button onClick={changeName}>{person.fname} {person.lname}</button>
+        </div>
+    )
+}
+
+export default ObjectUseState
+
+On clicking the button, the object does not re-render and so there is no change on the value.
+When we use object as state, the reference to the object must change for the component to queue the changes. You cannot directly change the component and expect the component to re-render.
+
+To re-render, create a copy of the earlier state using the spread operator and modify the new copy for the component to be properly re-rendered.
+
+The change function should instead look as below:
+ const changeName = () => {
+        const newPerson = {...person}
+        newPerson.fname = 'Daniel'
+        newPerson.lname = 'Onsombi'
+        setPerson(newPerson)
+    }
+
+This is also the case when working with arrays. When you push elements into an array, the array itself changes but the reference does not change. So, React does not rerender the component. The example also holds for useReducer.
+
+Summary:
+1. On the component tree the ObjectUseState is flagged, React expects that a new reference should be returned. If not be the case react will bail out if no new reference is returned and no log statement on the component.
+2. Mutating an object or an array as state will not cause a rerender when used with the useState or reduce hook.
+3. To re-render, make a copy of the existing state, modify as necessary and then pass the new state to the setter function or while returning from the reducer function.
+4. Directly mutating the state is an easy way to create bugs in an application. Make sure you don't do that.
+
+Rendering in Parent and Child components:
+In such cases, the parent component will render which in turn makes the child component to render.
+Re-renders: In the parent component the counter file can easily be implemented. How does this affect the child components?
+1. When the new state is different from the old state, the component re-renders.
+2. New state is same as the old state:
+   1. Right after the initial render - The component is not re-rendered.If parent does not re-render the child will not re-render
+   2. After re-renders - since the new state is different from the old, the component re-renders.If the new state is similar to the old, the component re-renders one more time. However, the child component does not re-render. Will re-render one more time to ensure whether it is safe to bail out from future renders.
+   3. The same applies to the useReduce hook.
+
+The child does not re-render when the same state is submitted after re-renders because, when react goes through the component tree, only the parent component is flagged to have been changed.
+Everytime the state of the parent component changes, the child component is rerendered but the commit phase of the child is not reached (DOM represented by child component is never updated - Child went through the render phase but not the commit phase). This is called "Unnecessary render".
+Unnecessary renders affect perfomance and need to be optimized.
+
+Unnecessary Renders: (As at this stage it was not working as explained)
+When a parent component renders, React will recursively render all of its child components. This is how React knows whether it needs to actually make any changes to the DOM.
+Unnecessary renders - Where the child component goes through the render phase but not the commit phase.
+
+Consider:
+import React, {useState}  from 'react'
+import { ChildOne } from './ChildOne';
+
+export const ParentOne = () => {
+    const [count, setCount] = useState(0);
+
+    console.log('ParentOne Render')
+    return (
+        <div>
+            <button onClick={() => setCount(PrevCount => PrevCount + 1)}>Count - {count}</button>
+            <ChildOne/>
+        </div>
+    )
+}
+
+On clicking the button, both the parent and child component re-renders. However, only the parent components goes to the commit phase. To optimize the above code, instad of calling the child component in the parent component, this is achieved by passing childOne as children to the ParentOne component in the App.js component. In ParentOne, destructure Children from props and add them to the JSX. This way, it will only be re-rendered if its value changes. 
+
+Same Element reference:
+Component can change its state but not props.
+With the optimization, React goes through the App.js component tree and finds the ParentOne component which has Children as a PROP.
+React automatically provides the optimization by looking the OptParentOne Component. Convert button & Children prop.
+
+A component has no means of directly changing the props and hence children would not have changed. Therefore make use of the React element that was previously created.
+
+React Memo:
+By default, both the child and parent component rerenders when the state of the parent component is changed. To optimize this, we use react.memo. Used to wrap the components if they render the same results given the same props. This gives a performance boost in some cases.
+
+The syntax is as: export const MemoizedChildTwo = React.memo(ChildTwo) then on the parent component, instead of calling ChildTwo, call MemoizedChildTwo. With this the ChildTwo, can only render if its state changes.
+
+Questions on Optimization
+When to use the same element reference technique and when to use React.Memo?
+1. Same Element Reference: 
+   1. When your parent component re-renders because of state change in the parent component.
+   2. This technique does not work if the parent component re-renders because of changes in its props.
+
+2. React.Memo:
+   1. When your child component is being asked to re-render due to changes in the parent's state which do not affect the child component props in anyway.
+   
+It is always better to go with the same element reference since you don't have to use react.memo all over your code.
+
+Why not wrap every single component with React.Memo?
+Why doesn't react just internally memoize every component and not expose React.memo to the developers:
+1. Shallow comparisons aren't free. They're O(prop count) time complexity. And they only buy something if it bails out.
+2. If a normal component renders in 10ms and React.Memo takes 2ms then if no props changes then the component takes 2ms. If the component takes new props it takes 12 ms. By wrapping everything with React.Memo, can be detrimental to your applcation. Better optimize only the expensive components.
+3. When you optimize the rendering of one component, react will also skip rendering that component's entire subtree because it's effectively stopping the default "render children recursively" behaviour of React.
+
+
