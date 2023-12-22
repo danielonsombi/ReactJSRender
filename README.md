@@ -388,6 +388,19 @@ Ways to cause a re-render
 Ifa component has App -> Parent -> Child A -> Child B -> Child C, with the context api we will use the count context provider with the count state at the parent which can then be passed down the tree to the child components and used using the useContext hook.
 
 If initial render is done, then if the count value is changed on the parent, the parent component will be flagged for rerendering. It also create the context provider and checks if the provider has a new value. React checks any other component that consumes the provided context value. The component will also be flagged for re-rendering.
+When using useContext, by default all the children in the component tree will be re-rendered. Including ones that having nothing to do with the context value.
+Context helps solve the problem of having to pass props through each component.
+There are a few ways of optimizing context code to avoid unnecessary re-rendering of components. To improve the rendering behaviour, you can use:
+
+1. Context and memo:
+By exporting memoized children from the child components and use it a child of the context provider. The rendering of the parent component causes the child components to re-render. But since the child component is wrapped with React.memo, React checks if the props have changed and since the props did not change, then child A and B will not render.
+React then gets to Child C and sees it consumes the countcontext whose value has changed and continues to re-render ChildC component. If child c has child components, they will still re-render due to the parent child rendering.
+
+2. Context and Same Element Reference:
+Review later on why not passing the count to the child component. See ContextParentTwo.js under context.
+
+
+
 
 
 
